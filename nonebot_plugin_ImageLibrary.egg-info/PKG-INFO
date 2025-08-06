@@ -12,6 +12,7 @@ Description-Content-Type: text/markdown
 License-File: LICENSE
 Requires-Dist: nonebot2
 Requires-Dist: nonebot-adapter-onebot
+Requires-Dist: httpx
 Dynamic: author
 Dynamic: author-email
 Dynamic: classifier
