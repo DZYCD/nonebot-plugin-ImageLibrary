@@ -28,11 +28,9 @@ __plugin_meta__ = PluginMetadata(
         @bot 独占/取消独占: 让某个群聊独占/取消独占一个关键词，其他群和私聊不可用
     """,
     type="application",
-    homepage="",
+    homepage="https://github.com/DZYCD/nonebot-plugin-ImageLibrary",
     supported_adapters={"~onebot.v11"},
 )
-
-
 
 import random
 import httpx

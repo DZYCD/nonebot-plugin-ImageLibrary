@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
-Name: nonebot_plugin_ImageLibrary
-Version: 1.0.2
+Name: nonebot_plugin_imagelibrary
+Version: 1.0.5
 Summary: Create a shared Image Library
 Home-page: https://github.com/DZYCD/nonebot-plugin-ImageLibrary
 Author: ISOM_DzyCd
@@ -12,10 +12,7 @@ Description-Content-Type: text/markdown
 License-File: LICENSE
 Requires-Dist: nonebot2
 Requires-Dist: nonebot-adapter-onebot
-Requires-Dist: random
 Requires-Dist: httpx
-Requires-Dist: json
-Requires-Dist: os
 Requires-Dist: requests
 Dynamic: author
 Dynamic: author-email
