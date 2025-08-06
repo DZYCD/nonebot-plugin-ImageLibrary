@@ -7,7 +7,7 @@
 # @IDE     : PyCharm
 import setuptools
 
-with open("README.md", "r") as fh:
+with open("README.md", "r", encoding='utf-8') as fh:
     long_description = fh.read()
 
 setuptools.setup(
@@ -19,7 +19,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/DZYCD/nonebot-plugin-ImageLibrary",
-    packages=setuptools.find_packages(),
+    packages=["nonebot_plugin_ImageLibrary"],
     install_requires=['nonebot2', 'nonebot-adapter-onebot'],
     entry_points={
         'console_scripts': [
