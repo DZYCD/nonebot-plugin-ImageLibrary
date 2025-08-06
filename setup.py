@@ -1,0 +1,34 @@
+#!/usr/bin/python3
+# _*_ coding: utf-8 _*_
+#
+# @Time    : 2025/8/6 下午3:29
+# @Author  : 单子叶蚕豆_DzyCd
+# @File    : setup.py
+# @IDE     : PyCharm
+import setuptools
+
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
+setuptools.setup(
+    name="nonebot_plugin_ImageLibrary",
+    version="1.0",
+    author="ISOM_DzyCd",
+    author_email="dzycd53@gmail.com",
+    description="Create a shared Image Library",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://github.com/DZYCD/nonebot-plugin-ImageLibrary",
+    packages=setuptools.find_packages(),
+    install_requires=['nonebot2', 'nonebot-adapter-onebot'],
+    entry_points={
+        'console_scripts': [
+            'ImageLibrary=ImageLibrary:main'
+        ],
+    },
+    classifiers=[
+        "Programming Language :: Python :: 3.9",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ],
+)
