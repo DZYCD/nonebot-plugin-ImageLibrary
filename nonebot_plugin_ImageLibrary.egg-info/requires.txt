@@ -1,4 +1,4 @@
-nonebot2
+nonebot2<3.0.0,>=2.3.0
 nonebot-adapter-onebot
-httpx
-requests
+httpx<1.0.0
+nonebot-plugin-localstore>=0.7.4

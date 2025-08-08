@@ -8,6 +8,7 @@
 # @File    : test.py
 # @IDE     : PyCharm
 from nonebot.plugin import PluginMetadata
+
 __plugin_meta__ = PluginMetadata(
     name="ImageLibrary",
     description="一个共享给所有人的Bot图库",
@@ -36,7 +37,6 @@ import random
 import httpx
 import json
 import os
-import requests
 from nonebot import logger
 from nonebot.rule import to_me
 from nonebot.plugin import on_command
@@ -46,11 +46,19 @@ from nonebot.params import CommandArg
 from nonebot.adapters import Bot, Event
 from nonebot.permission import SUPERUSER
 from nonebot.adapters.onebot.v11.permission import GROUP_ADMIN, GROUP_OWNER
+from nonebot import require
+
+require("nonebot_plugin_localstore")
+from pathlib import Path
+import nonebot_plugin_localstore as store
+
+data_path: Path = store.get_plugin_data_dir()
 
 
 class DataSetControl:
-    def __init__(self, data_path="library.json"):
+    def __init__(self, data_path, base_path):
         self.data_file = data_path
+        self.base_path = base_path
 
     def delete_value(self, key: str, value):
         try:
@@ -66,7 +74,7 @@ class DataSetControl:
         self.save_dataset(dic)
 
     def get_dataset(self):
-        with open(self.data_file, 'r', encoding='UTF-8') as f:
+        with open(os.path.join(self.base_path, self.data_file), 'r', encoding='UTF-8') as f:
             try:
                 load_dict = json.load(f)
                 return load_dict
@@ -75,7 +83,7 @@ class DataSetControl:
 
     def save_dataset(self, source):
         json_dict = json.dumps(source, indent=2, ensure_ascii=False)
-        with open(self.data_file, 'w', encoding='UTF-8') as f:
+        with open(os.path.join(self.base_path, self.data_file), 'w', encoding='UTF-8') as f:
             f.write(json_dict)
 
     def search(self, dic: dict, key: str):
@@ -100,27 +108,26 @@ class DataSetControl:
                 return False
         return False
 
+    def ensure_directory_exists(self, path):
+        if not os.path.exists(os.path.join(self.base_path, path)):
+            os.mkdir(os.path.join(self.base_path, path))
 
-dataset = DataSetControl("./image_library/image.json")
-base = "./image_library/library/"
-try:
-    os.mkdir("./image_library")
-except:
-    pass
+    def ensure_file_exists(self, path):
+        if not os.path.exists(os.path.join(self.base_path, path)):
+            with open(os.path.join(self.base_path, path), 'w', encoding='UTF-8')as f:
+                if 'json' in path:
+                    f.write(json.dumps("{}"))
 
-try:
-    os.mkdir("./image_library/library")
-except:
-    pass
-try:
-    with open("./image_library/image.json", 'r', encoding='UTF-8') as f:
-        pass
-except:
-    with open("./image_library/image.json", 'w'):
-        pass
 
-image_library_introduce = on_command("图库", rule=to_me(), priority=10, block=True)
+dataset = DataSetControl("image.json", data_path)
+
+dataset.ensure_directory_exists("library")
+
+dataset.ensure_file_exists("image.json")
+
+image_library_introduce = on_command("关于图库", rule=to_me(), priority=10, block=True)
 image_adder = on_command("添加", rule=to_me(), priority=10, block=True)
+
 get_image = on_command("来只", aliases={"来点", "来个"}, priority=10, block=True)
 pixiv_image = on_command("插画", priority=10, block=True)
 
@@ -134,18 +141,18 @@ close_image_permission = on_command("禁用", rule=to_me(), permission=GROUP_ADM
                                     block=True)
 
 disown_image_permission = on_command("取消独占", rule=to_me(), permission=SUPERUSER, priority=10,
-                                   block=True)
+                                     block=True)
 own_image_permission = on_command("独占", rule=to_me(), permission=SUPERUSER, priority=10,
-                                   block=True)
+                                  block=True)
 
 
-
-def image_save(path, filename):
+async def image_save(path, filename):
     img_src = filename
-    response = requests.get(img_src)
-    with open(base + path, 'wb') as file_obj:
-        file_obj.write(response.content)
-    return base + path
+    async with httpx.AsyncClient() as client:
+        response = await client.get(img_src)
+        with open(os.path.join(data_path, "library", path), 'wb') as file_obj:
+            file_obj.write(response.content)
+    return os.path.join(data_path, "library", path)
 
 
 def check_permission(event, key):
@@ -172,8 +179,7 @@ def check_permission(event, key):
 
 @image_library_introduce.handle()
 async def _():
-    image_library_introduce.finish("""
-  Image Library 图库
+    msg = """Image Library 图库
 一个共享给所有人的资源库
 
 ==所有人可用==
@@ -191,12 +197,12 @@ XXX后面接@[数字]可以选择词条下的指定内容
 ==Bot主可用==
 独占/取消独占: 让某个群聊独占/取消独占一个关键词，其他群和私聊不可用
 
-有任何问题欢迎 @单子叶蚕豆 反馈！
-    """)
+有任何问题欢迎 @单子叶蚕豆 反馈！"""
+    await image_library_introduce.finish(msg)
 
 
 @own_image_permission.handle()
-async def _(bot: Bot, event: Event, args: Message = CommandArg()):
+async def _(event: Event, args: Message = CommandArg()):
     from_info = event.get_session_id()
     key = args.extract_plain_text()
     group = 'personal'
@@ -206,7 +212,7 @@ async def _(bot: Bot, event: Event, args: Message = CommandArg()):
         await own_image_permission.finish("此功能仅可用于群聊")
         return
     try:
-        ban_list = ["ALL"+group]
+        ban_list = ["ALL" + group]
         dataset.update_value(key, "ban", str(ban_list))
     except MatcherException:
         raise
@@ -216,7 +222,7 @@ async def _(bot: Bot, event: Event, args: Message = CommandArg()):
 
 
 @disown_image_permission.handle()
-async def _(bot: Bot, event: Event, args: Message = CommandArg()):
+async def _(event: Event, args: Message = CommandArg()):
     from_info = event.get_session_id()
     key = args.extract_plain_text()
     group = 'personal'
@@ -236,7 +242,7 @@ async def _(bot: Bot, event: Event, args: Message = CommandArg()):
 
 
 @open_image_permission.handle()
-async def _(bot: Bot, event: Event, args: Message = CommandArg()):
+async def _(event: Event, args: Message = CommandArg()):
     from_info = event.get_session_id()
     key = args.extract_plain_text()
     group = 'personal'
@@ -266,7 +272,7 @@ async def _(bot: Bot, event: Event, args: Message = CommandArg()):
 
 
 @close_image_permission.handle()
-async def _(bot: Bot, event: Event, args: Message = CommandArg()):
+async def _(event: Event, args: Message = CommandArg()):
     from_info = event.get_session_id()
     key = args.extract_plain_text()
     group = 'personal'
@@ -281,26 +287,32 @@ async def _(bot: Bot, event: Event, args: Message = CommandArg()):
     except:
         await close_image_permission.finish(f"{key}词条不存在")
     res_list = json.loads(ban_list)
-    if len(res_list) > 0:
-        if "ALL" in res_list[0]:
-            await close_image_permission.finish(f"{key}词条已被独占，请联系bot主获取权限吧")
+
+    if len(res_list) and "ALL" in res_list[0]:
+        await close_image_permission.finish(f"{key}词条已被独占，请联系bot主获取权限吧")
     res_list.append(group)
     dataset.update_value(key, "ban", str(res_list))
     await close_image_permission.finish(f"已禁用本群的{key}词条")
 
 
 @pixiv_image.handle()
-async def _(args: Message = CommandArg()):
+async def fetch_pixiv_data(args: Message = CommandArg()):
     url = "https://image.anosu.top/pixiv/json"
-    if len(args):
-        url = url + f"?keyword={args}"
-    response = requests.get(url).text
-    m = {}
-    try:
-        m = random.choice(json.loads(response))
+    key = args.extract_plain_text()
 
+    url = url + f"?keyword={key}"
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url)
+            response.raise_for_status()
+            data = response.text
+            m = random.choice(json.loads(data))
+    except httpx.HTTPStatusError as http_err:
+        await pixiv_image.finish(f"HTTP 错误: {http_err}")
     except Exception as e:
         await pixiv_image.finish("没找到关键tag...\n不过你可以尝试翻译成日文或者英文再试一次")
+
     msg = "pid:{}\n>>>{}\ntags:{}".format(m["pid"], m["title"], m["tags"])
     await pixiv_image.finish(msg + MessageSegment.image(m["url"]))
 
@@ -329,10 +341,10 @@ async def _(event: Event):
     p = dataset.get_value(name, "using")
 
     if "cn:443/" in msg:
-        msg = image_save(name + str(p + 1) + ".mp4", msg)
+        msg = await image_save(f"{name}{p + 1}.mp4", msg)
     elif "download?" in msg:
-        msg = image_save(name + str(p + 1) + ".png", msg)
-    if p == False:
+        msg = await image_save(f"{name}{p + 1}.png", msg)
+    if not p:
         dataset.update_value(name, "using", 1)
         dataset.update_value(name, "ban", "[]")
         dataset.update_value(name, "1", msg)
@@ -350,47 +362,63 @@ async def _(event: Event, args: Message = CommandArg()):
         await get_image.finish(f"词条{msg}被禁止使用")
 
     code = 0
-    outmsg = ""
+    out_msg = ""
     try:
         if '@' in msg:
             code = msg.split("@")[1]
+            try:
+                int(code)
+            except:
+                await get_image.finish("@后面需要跟一个数字！")
             msg = msg.split("@")[0]
         else:
             p = dataset.get_value(msg, "using")
+            if type(p) is bool:
+                await get_image.finish("他貌似还没有被添加")
+            if int(p) == 0:
+                await get_image.finish("关键词存在，但是关键词下面没有可用词条欸，是不是被删除了？")
             code = str(random.randint(1, 100000) % int(p) + 1)
-        p = dataset.get_value(msg, "using")
-        if int(p) == 0:
-            await get_image.finish("已经被删除了，联系bot主去恢复这个词条吧")
 
-        outmsg = str(dataset.get_value(msg, code))
-        current_working_directory = os.getcwd()
-        outmsg = os.path.join(current_working_directory, outmsg)
-        logger.success("Get pic:{}".format(outmsg))
+        p = dataset.get_value(msg, "using")
+        if type(p) is bool:
+            await get_image.finish("他貌似还没有被添加")
+        if int(p) == 0:
+            await get_image.finish("关键词存在，但是关键词下面没有可用词条欸，是不是被删除了？")
+        if int(code) < 1 or int(p) < int(code):
+            await get_image.finish(f"标号不对哦，现在此关键词下只有{p}个条目")
+
+        out_msg = str(dataset.get_value(msg, code))
+        logger.success("Get File:{}".format(out_msg))
     except MatcherException:
         raise
-    except Exception as e:
+    except:
         await get_image.finish("他貌似还没有被添加")
-    try:
-        await get_image.finish(MessageSegment.image(outmsg))
-    except MatcherException:
-        raise
-    except Exception as e:
+    if 'mp4' in out_msg[-3:]:
         try:
-            await get_image.finish(MessageSegment.video(outmsg))
+            await get_image.finish(MessageSegment.video(out_msg))
         except MatcherException:
             raise
-        except Exception as e:
-            if "image_library" in outmsg:
-                p = dataset.get_value(msg, "using")
-                del_value(msg, code)
-                await get_image.finish(f'这个词条好像资源出问题了,我来清理掉，应该还剩{p-1}个内容')
-            if 'False' == outmsg:
-                await get_image.finish('没有这个编号...')
-            await get_image.finish(MessageSegment.text(outmsg))
+        except:
+            p = dataset.get_value(msg, "using")
+            del_value(msg, code)
+            await get_image.finish(f'这个词条好像资源出问题了,我来清理掉，应该还剩{p - 1}个内容')
+    if 'png' in out_msg[-3:]:
+        try:
+            await get_image.finish(MessageSegment.image(out_msg))
+        except MatcherException:
+            raise
+        except:
+            p = dataset.get_value(msg, "using")
+            del_value(msg, code)
+            await get_image.finish(f'这个词条好像资源出问题了,我来清理掉，应该还剩{p - 1}个内容')
+
+    if 'False' == out_msg:
+        await get_image.finish('没有这个编号...')
+    await get_image.finish(MessageSegment.text(out_msg))
 
 
 @image_deleter.handle()
-async def _(bot: Bot, event: Event, args: Message = CommandArg()):
+async def _(event: Event, args: Message = CommandArg()):
     name = args.extract_plain_text()
 
     if not check_permission(event, name):
@@ -411,6 +439,8 @@ def del_value(key, value):
     for i in node:
         if i == "using":
             new_dic[i] = node[i] - 1
+        elif i == "ban":
+            new_dic[i] = node[i]
         else:
             count += 1
             new_dic[count] = node[i]
@@ -441,7 +471,7 @@ async def _(event: Event):
 
 
 @image_list.handle()
-async def _(event: Event):
+async def _():
     try:
         note = dataset.get_dataset()
         title_list = []
