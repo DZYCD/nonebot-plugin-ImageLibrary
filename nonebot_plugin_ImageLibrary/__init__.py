@@ -7,8 +7,21 @@
 # @Author  : 单子叶蚕豆_DzyCd
 # @File    : test.py
 # @IDE     : PyCharm
-from nonebot.plugin import PluginMetadata
 
+from nonebot import logger
+from nonebot.rule import to_me
+from nonebot.plugin import on_command
+from nonebot.adapters.onebot.v11 import Message, MessageSegment
+from nonebot.exception import MatcherException
+from nonebot.params import CommandArg
+from nonebot.adapters import Bot, Event
+from nonebot.permission import SUPERUSER
+from nonebot.adapters.onebot.v11.permission import GROUP_ADMIN, GROUP_OWNER
+from nonebot import require
+require("nonebot_plugin_localstore")
+from pathlib import Path
+import nonebot_plugin_localstore as store
+from nonebot.plugin import PluginMetadata
 __plugin_meta__ = PluginMetadata(
     name="ImageLibrary",
     description="一个共享给所有人的Bot图库",
@@ -32,25 +45,11 @@ __plugin_meta__ = PluginMetadata(
     homepage="https://github.com/DZYCD/nonebot-plugin-ImageLibrary",
     supported_adapters={"~onebot.v11"},
 )
-
 import random
-import httpx
+import aiohttp
 import json
 import os
-from nonebot import logger
-from nonebot.rule import to_me
-from nonebot.plugin import on_command
-from nonebot.adapters.onebot.v11 import Message, MessageSegment
-from nonebot.exception import MatcherException
-from nonebot.params import CommandArg
-from nonebot.adapters import Bot, Event
-from nonebot.permission import SUPERUSER
-from nonebot.adapters.onebot.v11.permission import GROUP_ADMIN, GROUP_OWNER
-from nonebot import require
 
-require("nonebot_plugin_localstore")
-from pathlib import Path
-import nonebot_plugin_localstore as store
 
 data_path: Path = store.get_plugin_data_dir()
 
@@ -148,10 +147,11 @@ own_image_permission = on_command("独占", rule=to_me(), permission=SUPERUSER, 
 
 async def image_save(path, filename):
     img_src = filename
-    async with httpx.AsyncClient() as client:
-        response = await client.get(img_src)
-        with open(os.path.join(data_path, "library", path), 'wb') as file_obj:
-            file_obj.write(response.content)
+    async with aiohttp.ClientSession() as session:
+        async with session.get(img_src) as response:
+            content = await response.read()
+            with open(os.path.join(data_path, "library", path), 'wb') as file_obj:
+                file_obj.write(content)
     return os.path.join(data_path, "library", path)
 
 
@@ -295,6 +295,14 @@ async def _(event: Event, args: Message = CommandArg()):
     await close_image_permission.finish(f"已禁用本群的{key}词条")
 
 
+async def get_pixiv_image(url):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            data = await response.text()
+            m = random.choice(json.loads(data))
+            return m
+
+
 @pixiv_image.handle()
 async def fetch_pixiv_data(args: Message = CommandArg()):
     url = "https://image.anosu.top/pixiv/json"
@@ -303,18 +311,13 @@ async def fetch_pixiv_data(args: Message = CommandArg()):
     url = url + f"?keyword={key}"
 
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url)
-            response.raise_for_status()
-            data = response.text
-            m = random.choice(json.loads(data))
-    except httpx.HTTPStatusError as http_err:
-        await pixiv_image.finish(f"HTTP 错误: {http_err}")
-    except Exception as e:
+        m = await get_pixiv_image(url)
+        msg = "pid:{}\n>>>{}\ntags:{}".format(m["pid"], m["title"], m["tags"])
+        await pixiv_image.finish(msg + MessageSegment.image(m["url"]))
+    except MatcherException:
+        raise
+    except:
         await pixiv_image.finish("没找到关键tag...\n不过你可以尝试翻译成日文或者英文再试一次")
-
-    msg = "pid:{}\n>>>{}\ntags:{}".format(m["pid"], m["title"], m["tags"])
-    await pixiv_image.finish(msg + MessageSegment.image(m["url"]))
 
 
 @image_adder.handle()
@@ -485,9 +488,3 @@ async def _():
     except:
         await image_list.finish("出错了...")
 
-
-async def get_data(url):
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(url)
-        data = resp.text.strip()
-    return data
