@@ -1,8 +1,7 @@
 Metadata-Version: 2.4
 Name: nonebot_plugin_imagelibrary
-Version: 1.0.14
+Version: 1.1.0
 Summary: Create a shared Image Library
-Home-page: https://github.com/DZYCD/nonebot-plugin-ImageLibrary
 Author: ISOM_DzyCd
 Author-email: dzycd53@gmail.com
 Classifier: Programming Language :: Python :: 3.9
@@ -10,16 +9,15 @@ Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: OS Independent
 Description-Content-Type: text/markdown
 License-File: LICENSE
-Requires-Dist: nonebot2<2.4.0,>=2.3.0
+Requires-Dist: nonebot2<3.0.0,>=2.4.0
 Requires-Dist: nonebot-adapter-onebot>=2.2.0
-Requires-Dist: nonebot-plugin-localstore==0.7.4
+Requires-Dist: nonebot-plugin-localstore<1.0.0,>=0.7.4
 Requires-Dist: aiohttp>=3.0.0
 Dynamic: author
 Dynamic: author-email
 Dynamic: classifier
 Dynamic: description
 Dynamic: description-content-type
-Dynamic: home-page
 Dynamic: license-file
 Dynamic: requires-dist
 Dynamic: summary

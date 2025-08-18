@@ -12,15 +12,15 @@ with open("README.md", "r", encoding='utf-8') as fh:
 
 setuptools.setup(
     name="nonebot_plugin_imagelibrary",
-    version="1.0.15",
+    version="1.1.0",
     author="ISOM_DzyCd",
     author_email="dzycd53@gmail.com",
     description="Create a shared Image Library",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/DZYCD/nonebot-plugin-ImageLibrary",
+    urls={"Repository": "https://github.com/DZYCD/nonebot-plugin-ImageLibrary"},
     packages=["nonebot_plugin_ImageLibrary"],
-    install_requires=["nonebot2 >=2.3.0, <2.4.0", "nonebot-adapter-onebot >=2.2.0", "nonebot-plugin-localstore ==0.7.4", "aiohttp >=3.0.0"],
+    install_requires=["nonebot2>=2.4.0,<3.0.0", "nonebot-adapter-onebot >=2.2.0", "nonebot-plugin-localstore>=0.7.4,<1.0.0", "aiohttp >=3.0.0"],
     entry_points={
         'console_scripts': [
             'ImageLibrary=ImageLibrary:main'
